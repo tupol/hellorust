@@ -1,5 +1,4 @@
 use std::time::Duration;
-use tokio_cron_scheduler::{Job, JobScheduler};
 use warp::Filter;
 
 mod routes;
@@ -8,26 +7,23 @@ mod types;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut sched = JobScheduler::new()
-        .await
-        .expect("Scheduler starting problem");
-
-    let job = Job::new_repeated(Duration::from_secs(7), |_uuid, _l| {
-        println!("I'm repeated every 7 seconds");
-    })
-    .unwrap();
-
-    sched.add(job).await.expect("Could not add job");
-
-    sched.set_shutdown_handler(Box::new(|| {
-        Box::pin(async move {
-            println!("Scheduler shutting down done");
-        })
-    }));
-    sched.start().await.expect("`Could not start scheduler");
-
     let store = store::Store::new("postgres://maverick:maverick@localhost:5432/datagen").await;
+    let store2 = store.clone();
     let store_filter = warp::any().map(move || store.clone());
+
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(4));
+    tokio::spawn(async move {
+        loop {
+            let store_clone = store2.clone();
+            interval.tick().await;
+            tokio::spawn(async move {
+                match store_clone.ping().await {
+                    Ok(_) => println!("Database ping"),
+                    Err(err) => println!("Database unhealth {:?}", err),
+                }
+            });
+        }
+    });
 
     // println!("{:?}", store.select().await);
 
