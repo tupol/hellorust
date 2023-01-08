@@ -1,8 +1,9 @@
-use std::time::Duration;
-
+use jwt_simple::prelude::*;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
 use sqlx::Row;
+use std::fs;
+use std::time::Duration;
 use tokio_cron_scheduler::{Job, JobScheduler};
 use uuid::Uuid;
 use warp::{http::StatusCode, Filter};
@@ -15,6 +16,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         password: String,
     }
 
+    #[derive(Debug, Serialize)]
+    struct TokenResponse {
+        access_token: String,
+        id_token: String,
+        scope: String,
+        expires_in: i32,
+        token_type: String,
+    }
+
     #[derive(Debug)]
     struct User {
         id: Uuid,
@@ -25,8 +35,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     async fn print_request(item: LogonRequest) -> Result<impl warp::Reply, warp::Rejection> {
         println!("{:?}", item);
+        let private_pem_file_content = fs::read_to_string("authx/privatekey-authx.pkcs8")
+            .expect("Should have been able to read the file");
+        println!("{}", private_pem_file_content);
+        let key_pair =
+            RS256KeyPair::from_pem(&private_pem_file_content).expect("Could not read private key");
+        let claims = Claims::create(coarsetime::Duration::from_secs(60 * 60 * 2));
+        let token = key_pair.sign(claims).expect("Could not sign claims");
+        let response = TokenResponse {
+            id_token: token,
+            access_token: "access".to_string(),
+            expires_in: 1000,
+            scope: "scope".to_string(),
+            token_type: "whatever".to_string(),
+        };
         Ok(warp::reply::with_status(
-            format!("Received logon request for {:?}", item.username),
+            format!("Received logon request for {:?}", response),
             StatusCode::OK,
         ))
     }
@@ -61,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
             {
                 Ok(pool) => pool,
-                Err(e) => panic!("Couldn't establish DB connection: {}", e),
+                Err(e) => panic!("Couldn't establish DB connection: {:?}", e),
             };
             Store {
                 connection: db_pool,
