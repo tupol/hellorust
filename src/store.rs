@@ -32,4 +32,10 @@ impl Store {
             .fetch_all(&self.connection)
             .await
     }
+    pub async fn ping(&self) -> Result<i32, sqlx::Error> {
+        sqlx::query("SELECT 1")
+            .map(|row: PgRow| row.get(0))
+            .fetch_one(&self.connection)
+            .await
+    }
 }

@@ -27,10 +27,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sched.start().await.expect("`Could not start scheduler");
 
     let store = store::Store::new("postgres://maverick:maverick@localhost:5432/datagen").await;
+    let store_filter = warp::any().map(move || store.clone());
 
-    println!("{:?}", store.select().await);
-
-    // let store_filter = warp::any().map(move || store.clone());
+    // println!("{:?}", store.select().await);
 
     // POST /token
     let token = warp::post()
@@ -43,6 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::path("_admin"))
         .and(warp::path("health"))
         .and(warp::path::end())
+        .and(store_filter.clone())
         .and_then(routes::health::health);
 
     let routes = health.or(token);
