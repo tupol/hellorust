@@ -39,7 +39,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::body::json())
         .and_then(routes::token::print_request);
 
-    let routes = token;
+    let health = warp::get()
+        .and(warp::path("_admin"))
+        .and(warp::path("health"))
+        .and(warp::path::end())
+        .and_then(routes::health::health);
+
+    let routes = health.or(token);
 
     println!("Hellorust open for e-business");
 
