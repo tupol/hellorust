@@ -40,7 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{}", private_pem_file_content);
         let key_pair =
             RS256KeyPair::from_pem(&private_pem_file_content).expect("Could not read private key");
-        let claims = Claims::create(coarsetime::Duration::from_secs(60 * 60 * 2));
+        let claims = Claims::create(coarsetime::Duration::from_secs(60 * 60 * 2))
+            .with_issuer("https://authx.xlinq.io")
+            .with_audience("scf.xlinq.io");
         let token = key_pair.sign(claims).expect("Could not sign claims");
         let response = TokenResponse {
             id_token: token,
