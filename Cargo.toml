@@ -9,3 +9,4 @@ tokio = { version = "1", features = ["full"]  }
 warp = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 tokio-cron-scheduler = "*"
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "postgres" ] }
