@@ -495,6 +495,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tokio-cron-scheduler",
+ "uuid",
  "warp",
 ]
 
@@ -1439,6 +1440,7 @@ dependencies = [
  "thiserror",
  "tokio-stream",
  "url",
+ "uuid",
  "webpki-roots",
  "whoami",
 ]

@@ -1,16 +1,25 @@
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tokio_cron_scheduler::{Job, JobScheduler};
-use warp::{http::StatusCode, Filter};
-use sqlx::postgres::{PgPoolOptions, PgPool, PgRow};
+use sqlx::postgres::{PgPool, PgPoolOptions, PgRow};
 use sqlx::Row;
+use tokio_cron_scheduler::{Job, JobScheduler};
+use uuid::Uuid;
+use warp::{http::StatusCode, Filter};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     #[derive(Debug, Serialize, Deserialize)]
     struct LogonRequest {
         username: String,
+        password: String,
+    }
+
+    #[derive(Debug)]
+    struct User {
+        id: Uuid,
+        name: String,
+        email: String,
         password: String,
     }
 
@@ -48,7 +57,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         pub async fn new(db_url: &str) -> Self {
             let db_pool = match PgPoolOptions::new()
                 .max_connections(5)
-                .connect(db_url).await {
+                .connect(db_url)
+                .await
+            {
                 Ok(pool) => pool,
                 Err(e) => panic!("Couldn't establish DB connection: {}", e),
             };
@@ -56,14 +67,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 connection: db_pool,
             }
         }
-        pub async fn select(&self) -> Result<Vec<String>, sqlx::Error> {
-            let rows = sqlx::query("SELECT * FROM users").fetch_all(&self.connection).await?;
-            let str_result = rows
-                .iter()
-                .map(|r| format!("{}", r.get::<String, _>("name")))
-                .collect::<Vec<String>>();
-            println!("\n== select tickets with PgRows:\n{}", str_result.join(", "));
-            return Ok(str_result);
+        pub async fn select(&self) -> Result<Vec<User>, sqlx::Error> {
+            sqlx::query("SELECT * FROM users")
+                .map(|row: PgRow| User {
+                    id: row.get("id"),
+                    name: row.get("name"),
+                    email: row.get("email"),
+                    password: row.get("password"),
+                })
+                .fetch_all(&self.connection)
+                .await
         }
     }
 
