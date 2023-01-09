@@ -1,7 +1,9 @@
+use std::fs;
+
 use base64::{engine::general_purpose, Engine as _};
 use hmac::{Hmac, Mac};
+use jwt_simple::prelude::*;
 use sha2::Sha256;
-use std::time::Duration;
 use warp::Filter;
 
 mod routes;
@@ -13,6 +15,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = store::Store::new("postgres://maverick:maverick@localhost:5432/datagen").await;
     let store2 = store.clone();
     let store_filter = warp::any().map(move || store.clone());
+
+    let private_pem_file_content = fs::read_to_string("authx/privatekey-authx.pkcs8")
+        .expect("Should have been able to read the file");
+    // println!("{}", private_pem_file_content);
+    let key_pair =
+        RS256KeyPair::from_pem(&private_pem_file_content).expect("Could not read private key");
+    let keypair_filter = warp::any().map(move || key_pair.clone());
 
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(4));
     tokio::spawn(async move {
@@ -35,6 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and(warp::path("token"))
         .and(warp::path::end())
         .and(store_filter.clone())
+        .and(keypair_filter.clone())
         .and(warp::body::json())
         .and_then(routes::token::print_request);
 

@@ -1,6 +1,7 @@
-use crate::store::Store;
 use warp::http::StatusCode;
 use warp::reply::with_status;
+
+use crate::store::Store;
 
 pub async fn health(store: Store) -> Result<impl warp::Reply, warp::Rejection> {
     match store.ping().await {
