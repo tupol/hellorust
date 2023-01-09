@@ -25,9 +25,9 @@ impl Store {
     // amstate character varying, amlocktime
     // integer, name text, emailaddress text, typeuser text, firstname text, lastname text,
     // usertechnicalid text, pwcreated date)
-    pub async fn userInfo(&self) -> Result<Vec<User>, sqlx::Error> {
+    pub async fn userInfo(&self, username: &str) -> Result<Vec<User>, sqlx::Error> {
         sqlx::query("SELECT * FROM userinfo($1, $2, $3);")
-            .bind("NPA-AuthenticationManagement")
+            .bind(username)
             .bind("confidential")
             .bind("confidential")
             .map(|row: PgRow| User {

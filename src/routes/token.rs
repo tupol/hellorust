@@ -27,7 +27,7 @@ pub async fn print_request(
         token_type: "whatever".to_string(),
     };
 
-    let _res = match store.userInfo().await {
+    let _res = match store.userInfo(&item.username).await {
         Ok(p) => println!("Healthy {:?}", p),
         Err(err) => println!("Not healthy {:?}", err),
     };
