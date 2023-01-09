@@ -1,3 +1,6 @@
+use base64::{engine::general_purpose, Engine as _};
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
 use std::time::Duration;
 use warp::Filter;
 
@@ -44,6 +47,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let routes = health.or(token);
 
+    type HmacSha256 = Hmac<Sha256>;
+
+    let salt =
+        "pSMrnnFNdJtanr5m+D2ZNHOpszE0sYFTAMWXkLfvR7F0euELeyEu1Q1AqwS7o3RTrHyo0UdYtwexDWe7N3gEyA==";
+    let decoded_salt = general_purpose::STANDARD
+        .decode(salt)
+        .expect("Could note decode salt");
+    let hashpassword = "0mhcQnHQjB02bWs9J1u5WFD7e9qZnq32GWfsZjO/XlA=";
+    let password = "usr001..";
+
+    let mut mac =
+        HmacSha256::new_from_slice(decoded_salt.as_slice()).expect("HMAC can take key of any size");
+    mac.update(password.as_bytes());
+    let result = mac.finalize();
+    let code_bytes = result.into_bytes();
+    let encoded: String = general_purpose::STANDARD.encode(code_bytes);
+    println!("{}", encoded);
+    assert_eq!(encoded, hashpassword);
     println!("Hellorust open for e-business");
 
     warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;

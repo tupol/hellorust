@@ -12,3 +12,6 @@ sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "postgres", "uuid
 uuid = { version = "1.2.2", features = ["v4"]}
 jwt-simple = { version = "0.11.2"}
 chrono = "0.4.23"
+hmac = "0.12.1"
+sha2 = "0.10.6"
+base64 = "0.21.0"
