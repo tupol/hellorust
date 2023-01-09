@@ -21,13 +21,31 @@ impl Store {
             connection: db_pool,
         }
     }
-    pub async fn select(&self) -> Result<Vec<User>, sqlx::Error> {
-        sqlx::query("SELECT * FROM users")
+    //username text, hashpassword text, salt text, loa1level integer, loa2level integer, amid text,
+    // amstate character varying, amlocktime
+    // integer, name text, emailaddress text, typeuser text, firstname text, lastname text,
+    // usertechnicalid text, pwcreated date)
+    pub async fn userInfo(&self) -> Result<Vec<User>, sqlx::Error> {
+        sqlx::query("SELECT * FROM userinfo($1, $2, $3);")
+            .bind("NPA-AuthenticationManagement")
+            .bind("confidential")
+            .bind("confidential")
             .map(|row: PgRow| User {
-                id: row.get("id"),
+                username: row.get("username"),
+                hashpassword: row.get("hashpassword"),
+                salt: row.get("salt"),
+                loa1level: row.get("loa1level"),
+                loa2level: row.get("loa2level"),
+                amid: row.get("amid"),
+                amstate: row.get("amstate"),
+                amlocktime: row.get("amlocktime"),
                 name: row.get("name"),
-                email: row.get("email"),
-                password: row.get("password"),
+                emailaddress: row.get("emailaddress"),
+                typeuser: row.get("typeuser"),
+                firstname: row.get("firstname"),
+                lastname: row.get("lastname"),
+                usertechnicalid: row.get("usertechnicalid"),
+                pwcreated: row.get("pwcreated"),
             })
             .fetch_all(&self.connection)
             .await

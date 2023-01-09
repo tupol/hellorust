@@ -31,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let token = warp::post()
         .and(warp::path("token"))
         .and(warp::path::end())
+        .and(store_filter.clone())
         .and(warp::body::json())
         .and_then(routes::token::print_request);
 
