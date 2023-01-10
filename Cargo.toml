@@ -1,5 +1,5 @@
 [package]
-name = "hello"
+name = "hellorust"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,3 +15,10 @@ chrono = "0.4.23"
 hmac = "0.12.1"
 sha2 = "0.10.6"
 base64 = "0.21.0"
+dotenv = "0.15.0"
+clap = { version = "3.1.7", features = ["derive"] }
+proc-macro2 = "1.0.37"
+openssl = { version = "0.10.32", features = ["vendored"] }
+
+[build-dependencies]
+platforms = "2.0.0"

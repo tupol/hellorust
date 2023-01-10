@@ -10,11 +10,11 @@ mod types;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let store = store::Store::new("postgres://maverick:maverick@localhost:5432/datagen").await;
+    let store = store::Store::new("postgres://maverick:maverick@postgres:5432/datagen").await;
     let store2 = store.clone();
     let store_filter = warp::any().map(move || store.clone());
 
-    let private_pem_file_content = fs::read_to_string("authx/privatekey-authx.pkcs8")
+    let private_pem_file_content = fs::read_to_string("privatekey-authx.pkcs8")
         .expect("Should have been able to read the file");
     // println!("{}", private_pem_file_content);
     let key_pair =
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Hellorust open for e-business");
 
-    warp::serve(routes).run(([127, 0, 0, 1], 3031)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 8780)).await;
 
     Ok(())
 }
