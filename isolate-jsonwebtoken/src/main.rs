@@ -1,8 +1,8 @@
-use jsonwebtoken::{encode, EncodingKey, Header, Algorithm};
 use chrono::{prelude::*, Duration};
+use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use models::TokenClaims;
-use std::time::Instant;
 use std::fs;
+use std::time::Instant;
 
 mod models {
     use serde::{Deserialize, Serialize};
@@ -56,7 +56,8 @@ fn main() {
             &Header::new(Algorithm::RS256),
             &claims,
             &EncodingKey::from_rsa_pem(include_bytes!("../privatekey-authx.pkcs8")).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
         let n3 = start.elapsed();
 
         println!("Elapsed sign {} token {}", (n3 - n2).as_millis(), token);

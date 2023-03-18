@@ -1,7 +1,7 @@
 use jwt_simple::prelude::*;
 use models::IdClaims;
-use std::time::Instant;
 use std::fs;
+use std::time::Instant;
 
 mod models {
     use serde::{Deserialize, Serialize};
