@@ -1,5 +1,5 @@
 [package]
-name = "actix-web"
+name = "actix-web-jsonwebtoken"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,7 +16,7 @@ tokio-pg-mapper-derive = "0.2.0"
 tokio-postgres = "0.7.6"
 derive_more = "0.99.17"
 chrono = "0.4.23"
-jwt-simple = { version = "0.11.2"}
+jsonwebtoken = "8.2.0"
 hmac = "0.12.1"
 sha2 = "0.10.6"
 base64 = "0.21.0"

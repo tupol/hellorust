@@ -8,7 +8,8 @@ docker network create pg-perf
 
 Start the database:
 ```bash
-./db/run_db.sh
+cd db
+./run_db.sh
 ```
 It will start a container called `postgres-perf` containing one table called `users`.
 

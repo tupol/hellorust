@@ -56,8 +56,7 @@ fn main() {
             &Header::new(Algorithm::RS256),
             &claims,
             &EncodingKey::from_rsa_pem(include_bytes!("../privatekey-authx.pkcs8")).unwrap(),
-        )
-        .unwrap();
+        ).unwrap();
         let n3 = start.elapsed();
 
         println!("Elapsed sign {} token {}", (n3 - n2).as_millis(), token);
