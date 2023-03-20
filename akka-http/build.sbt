@@ -15,8 +15,6 @@ lazy val commCodecVersion  = "1.15"
 lazy val jwtVersion        = "9.2.0"
 lazy val bCastleVersion    = "1.70"
 
-fork := true
-
 libraryDependencies ++= Seq(
   "com.typesafe.akka"    %% "akka-stream"       % akkaVersion,
   "com.typesafe.akka"    %% "akka-http"         % akkaHttpVersion,
