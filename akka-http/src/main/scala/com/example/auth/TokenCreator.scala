@@ -2,11 +2,11 @@ package com.example.auth
 
 import com.example.AuthConfig
 import com.example.db.UserInfo
-import org.json4s.{ DefaultFormats, Formats }
+import org.json4s.{DefaultFormats, Formats}
 import org.json4s.ext.JavaTypesSerializers
-import pdi.jwt.{ Jwt, JwtAlgorithm, JwtBase64, JwtClaim, JwtHeader }
+import pdi.jwt.{Jwt, JwtAlgorithm, JwtBase64, JwtClaim, JwtHeader}
 
-import java.security.MessageDigest
+import java.security.{MessageDigest, PrivateKey}
 import java.time.Clock
 import scala.util.Try
 

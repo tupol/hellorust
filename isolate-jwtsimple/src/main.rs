@@ -25,8 +25,11 @@ fn main() {
     let n11 = start.elapsed();
     println!("Elapsed load keypair {}", (n11 - n1).as_millis());
 
+    let mut totalMicros: u128 = 0;
+    let testCount = 1000;
+
     let mut i = 0;
-    while i < 10 {
+    while i < testCount {
         let n2 = start.elapsed();
         let id_claims = IdClaims {
             username: "NPA-PlatformManagement".to_string(),
@@ -38,8 +41,12 @@ fn main() {
                 .with_audience("scf.xlinq.io");
         let token = key_pair.sign(claims).expect("Could not sign claims");
         let n3 = start.elapsed();
-
-        println!("Elapsed sign {} token {}", (n3 - n2).as_millis(), token);
+        if(i == 0) {
+            println!("Elapsed sign {} token {}", (n3 - n2).as_micros(), token);
+        }
         i = i + 1;
+        totalMicros += (n3 - n2).as_micros()
     }
+    let averageMicors = totalMicros / testCount;
+    println!("Average {} micros for {} tests", averageMicors, testCount);
 }
