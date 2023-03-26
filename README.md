@@ -31,7 +31,13 @@ cd actix-web
 docker-compose up -d
 ```
 
-Invoke /token endpoint
+### Akka-http
+Start the akka-http version of simple-auth in docker:
+```bash
+cd akka-http
+./rebuild-img.sh
+```
+### Invoke /token endpoint
 ```bash
 curl http://localhost:8780/token -X POST -d '{"username":"NPA","password":"usr001.."}' -H 'Content-Type: application/json'
 ```
