@@ -8,28 +8,32 @@ import com.example.route.TokenRoute
 import com.zaxxer.hikari.HikariDataSource
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
-import scala.io.StdIn
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
-object Main {
+object Main extends App {
 
-  def main(args: Array[String]): Unit = {
-    implicit val system           = ActorSystem("akka-http-simple-auth")
-    implicit val executionContext = system.dispatcher
+  implicit val system           = ActorSystem("akka-http-simple-auth")
+  implicit val executionContext = system.dispatcher
 
-    val config = SimpleAuthConfig.load()
+  val config = SimpleAuthConfig.load()
 
-    // make sure we have a crypto implementation
-    java.security.Security.addProvider(new BouncyCastleProvider())
+  // make sure we have a crypto implementation
+  java.security.Security.addProvider(new BouncyCastleProvider())
 
-    val datasource    = HikariConnectionPool(new HikariDataSource(config.db.hikari))
-    val tokenCreator  = TokenCreator(config.auth)
-    val route         = TokenRoute(datasource, tokenCreator).route
-    val bindingFuture = Http().newServerAt(config.http.interface, config.http.port).bind(route)
+  val datasource   = HikariConnectionPool(new HikariDataSource(config.db.hikari))
+  val tokenCreator = TokenCreator(config.auth)
+  val route        = TokenRoute(datasource, tokenCreator).route
 
-    StdIn.readLine()
-    bindingFuture
-      .flatMap(_.unbind())
-      .onComplete(_ => system.terminate())
-  }
+  val keepRunning = for {
+    _ <- Http()
+          .newServerAt(config.http.interface, config.http.port)
+          .bind(route)
+          .map(_ => println("Akka http simple auth open for e-Business"))
+          .recover { case ex => ex.printStackTrace() }
+    waitForever <- Future.never
+  } yield waitForever
+
+  Await.ready(keepRunning, Duration.Inf)
 
 }

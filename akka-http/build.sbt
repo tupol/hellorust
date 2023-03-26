@@ -1,11 +1,36 @@
+import com.typesafe.sbt.packager.docker._
+
 name := "akka-http"
 
 version := "1.0"
 
 scalaVersion := "2.13.1"
 
-lazy val akkaVersion       = "2.6.20"
-lazy val akkaHttpVersion   = "10.2.10"
+ThisBuild / useCoursier := false
+
+val jreDockerBaseImage = "xlinqreg.azurecr.io/base/azul/zulu-openjdk-alpine:17.0.3"
+
+lazy val basicSettings = Seq(
+  organization := "com.example",
+  name := "simple-auth",
+  javacOptions ++= Seq("-source", "17", "-target", "17", "-Xlint"),
+  scalaVersion := "2.13.1",
+  scalacOptions ++= Seq(
+    "-feature",
+    "-deprecation",
+    "-unchecked",
+    "-Ywarn-unused:imports",
+    "-Xfatal-warnings"
+  )
+)
+def assemblySettings(enabled: Boolean) = Seq(
+  packageBin / assembleArtifact := enabled,
+  assemblyPackageScala / assembleArtifact := enabled,
+  assemblyPackageDependency / assembleArtifact := enabled
+)
+
+lazy val akkaVersion       = "2.7.0"
+lazy val akkaHttpVersion   = "10.4.0"
 lazy val postgresVersion   = "42.5.4"
 lazy val hikariVersion     = "5.0.1"
 lazy val logbackVersion    = "1.2.3"
@@ -15,7 +40,7 @@ lazy val commCodecVersion  = "1.15"
 lazy val jwtVersion        = "9.2.0"
 lazy val bCastleVersion    = "1.70"
 
-libraryDependencies ++= Seq(
+lazy val akkaLibraryDependencies: Seq[ModuleID] = Seq(
   "com.typesafe.akka"    %% "akka-stream"       % akkaVersion,
   "com.typesafe.akka"    %% "akka-http"         % akkaHttpVersion,
   "commons-codec"        % "commons-codec"      % commCodecVersion,
@@ -32,3 +57,33 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
   "org.scalatest"     %% "scalatest" % "3.1.0" % Test
 )
+
+lazy val server = (project in file("."))
+  .enablePlugins(JavaAppPackaging)
+  .enablePlugins(DockerPlugin)
+  .settings(assemblySettings(enabled = false): _*)
+  .settings(
+    name := "akka-http-simple-auth",
+    libraryDependencies ++= akkaLibraryDependencies,
+    Docker / packageName := "example.com/akka-http-simple-auth",
+    dockerBaseImage := jreDockerBaseImage,
+    dockerCommands ++= Seq(
+      Cmd("USER", "root"),
+      ExecCmd("RUN", "apk", "add", "--no-cache", "bash"),
+      ExecCmd("RUN", "addgroup", "-g", "1000", "-S", "incontaineruser"),
+      ExecCmd(
+        "RUN",
+        "adduser",
+        "-u",
+        "1000",
+        "-S",
+        "incontaineruser",
+        "-G",
+        "incontaineruser"
+      ),
+      Cmd("WORKDIR", "/opt/docker"),
+      Cmd("RUN", "chown", "incontaineruser:incontaineruser", "-R", "/opt"),
+      Cmd("USER", "incontaineruser")
+    ),
+    Test / publishArtifact := true
+  )
