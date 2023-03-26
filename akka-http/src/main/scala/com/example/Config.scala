@@ -3,11 +3,17 @@ package com.example
 import com.example.auth.KeyTools
 import com.typesafe.config.ConfigFactory
 import com.zaxxer.hikari.HikariConfig
+import scala.jdk.CollectionConverters._
 
 import java.security.PrivateKey
 
 case class SimpleAuthConfig(http: HttpConfig, db: DbConfig, auth: AuthConfig)
 object SimpleAuthConfig {
+  def fromEnv(key: String, defaultValue: String): String = {
+    val envMap  = System.getenv().asScala.toMap
+    val fullKey = s"CONFIG_FORCE_${key.replace("-", "_")}"
+    envMap.getOrElse(fullKey, defaultValue)
+  }
   def load(): SimpleAuthConfig = {
     val cfg   = ConfigFactory.load("simple-token.conf")
     val dbCfg = cfg.getConfig("db")
@@ -18,11 +24,14 @@ object SimpleAuthConfig {
       user = dbCfg.getString("user"),
       password = dbCfg.getString("password"),
       schema = dbCfg.getString("schema"),
-      host = dbCfg.getString("host"),
-      port = dbCfg.getInt("port")
+      host = fromEnv("db-host", dbCfg.getString("host")),
+      port = fromEnv("db-port", dbCfg.getInt("port").toString).toInt
     )
-    val httpCfg    = cfg.getConfig("http")
-    val http       = HttpConfig(httpCfg.getString("interface"), httpCfg.getInt("port"))
+    val httpCfg = cfg.getConfig("http")
+    val http = HttpConfig(
+      fromEnv("http-interface", httpCfg.getString("interface")),
+      fromEnv("http-port", httpCfg.getInt("port").toString).toInt
+    )
     val authCfg    = cfg.getConfig("auth")
     val privateKey = authCfg.getString("private-key")
     val auth = AuthConfig(
