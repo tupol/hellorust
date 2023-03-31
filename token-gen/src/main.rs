@@ -2,17 +2,26 @@ extern crate core;
 
 mod auth;
 
-use jsonwebtoken::{decode, Algorithm, EncodingKey, Header};
+use std::iter::Map;
+use jsonwebtoken::{decode, Algorithm, EncodingKey, Header, DecodingKey, Validation, decode_header, encode, TokenData};
 use std::ops::Deref;
 
 use crate::auth::config::AuthConfig;
-use crate::auth::tokens::TokenPair;
+use crate::auth::tokens::{AccessToken, IdToken, TokenPair};
 use crate::auth::user::UserInfo;
+use serde::{Deserialize, Serialize};
+use serde_json::map::Values;
+use serde_json::Value;
+use crate::auth::claims::{AccessClaims, IdClaims, JwtClaim};
 
 fn main() {
-    let key = EncodingKey::from_rsa_pem(include_bytes!("../privatekey-authx.pkcs8")).unwrap();
+
+    let encoding_key = EncodingKey::from_rsa_pem(include_bytes!("../privatekey.pkcs8")).unwrap();
+    let decoding_key = DecodingKey::from_rsa_pem(include_bytes!("../publickey.pem")).unwrap();
+
     let auth_conf = AuthConfig {
-        key: key,
+        encoding_key: encoding_key,
+        decoding_key: Some(decoding_key),
         issuer: "my_issuer".to_string(),
         audience: "my_audience".to_string(),
     };
@@ -28,6 +37,10 @@ fn main() {
     let session_id = "some_id".to_string();
 
     let tp = TokenPair::create(&auth_conf, &header, user_info, session_id).unwrap();
+
+    println!("{:?}", tp.id_token);
+    println!("{:?}", tp.access_token);
+
     println!(
         "ID Token     {}",
         tp.id_token.raw_token(&auth_conf).unwrap()
@@ -36,4 +49,25 @@ fn main() {
         "Access Token {}",
         tp.access_token.raw_token(&auth_conf).unwrap()
     );
+
+    let raw_id_token = tp.id_token.raw_token(&auth_conf).unwrap();
+    let raw_access_token = tp.access_token.raw_token(&auth_conf).unwrap();
+
+    println!("{:?}", IdToken::from_raw_token(&auth_conf, &raw_id_token).unwrap());
+    println!("{:?}", AccessToken::from_raw_token(&auth_conf, &raw_access_token).unwrap());
+
+    let tp = TokenPair::from_raw_tokens(&auth_conf, &raw_id_token, &raw_access_token).unwrap();
+    println!("{:?}", tp.id_token);
+    println!("{:?}", tp.access_token);
+
+    let unknown_access_token = AccessToken{
+        header: header,
+        claims: JwtClaim::empty(),
+        content: AccessClaims{ session_id: "".to_string() }
+    };
+
+    let failed_extraction_result = TokenPair::from_raw_tokens(&auth_conf, &raw_id_token, &unknown_access_token.raw_token(&auth_conf).unwrap());
+    assert!(failed_extraction_result.is_err())
+
 }
+
