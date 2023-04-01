@@ -1,11 +1,10 @@
-use jsonwebtoken::{encode, Algorithm, Header, Validation, decode};
+use jsonwebtoken::{encode, Algorithm, Header, Validation, decode, EncodingKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::auth::claims::*;
 use crate::auth::config::AuthConfig;
 use crate::auth::errors::*;
-use crate::auth::user::UserInfo;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IdToken {
@@ -14,8 +13,8 @@ pub struct IdToken {
     pub content: IdClaims,
 }
 impl IdToken {
-    pub fn raw_token(&self, conf: &AuthConfig) -> Result<String> {
-        create_token(conf, &self.header, &self.content)
+    pub fn raw_token(&self, encoding_key: &EncodingKey) -> Result<String> {
+        create_token(encoding_key, &self.header, self.claims.clone(), self.content.clone())
     }
     pub fn from_raw_token(conf: &AuthConfig, raw_token: &str) -> Result<IdToken> {
         let decoding_key= &conf.decoding_key.clone().expect("token can not be decoded without the decoding key");
@@ -37,8 +36,8 @@ pub struct AccessToken {
     pub content: AccessClaims,
 }
 impl AccessToken {
-    pub fn raw_token(&self, conf: &AuthConfig) -> Result<String> {
-        create_token(conf, &self.header, &self.content)
+    pub fn raw_token(&self, encoding_key: &EncodingKey) -> Result<String> {
+        create_token(encoding_key, &self.header, self.claims.clone(), self.content.clone())
     }
     pub fn from_raw_token(conf: &AuthConfig, raw_token: &str) -> Result<AccessToken> {
         let decoding_key= &conf.decoding_key.clone().expect("token can not be decoded without the decoding key");
@@ -60,28 +59,23 @@ pub struct TokenPair {
 }
 impl TokenPair {
     pub fn create(
-        conf: &AuthConfig,
+        encoding_key: &EncodingKey,
         header: &Header,
-        user_info: UserInfo,
-        session_id: String,
+        common_claims: JwtClaim,
+        id_claims: IdClaims,
+        access_claims: AccessClaims
     ) -> Result<TokenPair> {
-        fn claims(conf: &AuthConfig) -> JwtClaim {
-            default_claims()
-                .with_audience(conf.audience.clone())
-                .with_issuer(conf.issuer.clone())
-        }
-        let access_claims = AccessClaims { session_id };
         let access_token = AccessToken {
             header: header.clone(),
-            claims: claims(conf),
+            claims: common_claims.clone(),
             content: access_claims,
         };
-        let at_hash = access_token.raw_token(conf).and_then(|at| hash_token(&at))?;
-        let id_claims = IdClaims::from_user_info(user_info).with_at_hash(at_hash);
+        let at_hash = access_token.raw_token(encoding_key).and_then(|at| hash_token(&at))?;
+
         let id_token = IdToken {
             header: header.clone(),
-            claims: claims(conf),
-            content: id_claims,
+            claims: common_claims,
+            content: id_claims.with_at_hash(at_hash),
         };
         Ok(TokenPair {
             id_token: id_token,
@@ -91,7 +85,7 @@ impl TokenPair {
     pub fn from_raw_tokens(conf: &AuthConfig, raw_id_token: &str, raw_access_token: &str) -> Result<TokenPair> {
         let id_token = IdToken::from_raw_token(conf, raw_id_token)?;
         let access_token = AccessToken::from_raw_token(conf, raw_access_token)?;
-        let at_hash = &access_token.raw_token(conf).and_then(|at| hash_token(&at))?;
+        let at_hash = &access_token.raw_token(&conf.encoding_key).and_then(|at| hash_token(&at))?;
         let id_at_hash = &id_token.content.at_hash.clone().unwrap_or("".to_string());
         if !at_hash.eq(id_at_hash) {
             Err(Error{ message: "The access token hash does not match the corresponding id token at_hash value.".to_string() })
@@ -104,17 +98,11 @@ impl TokenPair {
     }
 }
 
-fn default_claims() -> JwtClaim {
-    JwtClaim::empty().issued_now().expires_in(10 * 60)
-}
-
-fn create_token<T: Serialize>(conf: &AuthConfig, header: &Header, content: T) -> Result<String> {
-    let claims = default_claims()
-        .with_issuer(conf.issuer.clone())
-        .with_audience(conf.audience.clone())
+fn create_token<T: Serialize>(encoding_key: &EncodingKey, header: &Header, claims: JwtClaim, content: T) -> Result<String> {
+    let claims = claims
         .with_content(content)
         .as_json_value()?;
-    let token = encode(header, &claims, &conf.encoding_key)?;
+    let token = encode(header, &claims, encoding_key)?;
     Ok(token)
 }
 

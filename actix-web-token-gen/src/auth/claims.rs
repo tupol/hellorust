@@ -3,14 +3,13 @@ use serde_json::Value;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::auth::errors::*;
-use crate::auth::user::UserInfo;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AccessClaims {
     pub session_id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IdClaims {
     pub name: String,
     pub email: String,
@@ -19,15 +18,6 @@ pub struct IdClaims {
     pub at_hash: Option<String>,
 }
 impl IdClaims {
-    pub fn from_user_info(user_info: UserInfo) -> Self {
-        IdClaims {
-            name: user_info.name,
-            email: user_info.email_address,
-            first_name: user_info.first_name,
-            last_name: user_info.last_name,
-            at_hash: None,
-        }
-    }
     pub fn with_at_hash(self, at_hash: String) -> Self {
         IdClaims {
             name: self.name,
@@ -39,7 +29,7 @@ impl IdClaims {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JwtClaim {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub iss: Option<String>,

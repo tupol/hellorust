@@ -2,17 +2,12 @@ extern crate core;
 
 mod auth;
 
-use std::iter::Map;
-use jsonwebtoken::{decode, Algorithm, EncodingKey, Header, DecodingKey, Validation, decode_header, encode, TokenData};
-use std::ops::Deref;
+use jsonwebtoken::{Algorithm, EncodingKey, Header, DecodingKey};
 
 use crate::auth::config::AuthConfig;
 use crate::auth::tokens::{AccessToken, IdToken, TokenPair};
 use crate::auth::user::UserInfo;
-use serde::{Deserialize, Serialize};
-use serde_json::map::Values;
-use serde_json::Value;
-use crate::auth::claims::{AccessClaims, IdClaims, JwtClaim};
+use crate::auth::claims::{AccessClaims, JwtClaim};
 
 fn main() {
 
@@ -20,7 +15,7 @@ fn main() {
     let decoding_key = DecodingKey::from_rsa_pem(include_bytes!("../publickey.pem")).unwrap();
 
     let auth_conf = AuthConfig {
-        encoding_key: encoding_key,
+        encoding_key,
         decoding_key: Some(decoding_key),
         issuer: "my_issuer".to_string(),
         audience: "my_audience".to_string(),
@@ -61,7 +56,7 @@ fn main() {
     println!("{:?}", tp.access_token);
 
     let unknown_access_token = AccessToken{
-        header: header,
+        header,
         claims: JwtClaim::empty(),
         content: AccessClaims{ session_id: "".to_string() }
     };
