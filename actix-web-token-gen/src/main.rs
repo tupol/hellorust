@@ -97,8 +97,12 @@ mod db {
     use crate::{errors::MyError, models::{User, LogonRequest}};
 
     pub async fn get_user(client: &Client, user_info: LogonRequest) -> Result<User, MyError> {
-        let _stmt = include_str!("../sql/select_user.sql");
+        // let _stmt = include_str!("../sql/select_user.sql");
         // let _stmt = _stmt.replace("$table_fields", &User::sql_table_fields());
+        let _stmt = "SELECT username, hashpassword, salt, loa1level, loa2level, amid, amstate, \
+            amlocktime, name , emailaddress , typeuser , firstname , lastname , usertechnicalid \
+            FROM userinfo($1, $2, $3);"
+            .to_string();
         let stmt = client.prepare(&_stmt).await.unwrap();
 
         client
@@ -133,37 +137,41 @@ mod handlers {
     use crate::auth::claims::{AccessClaims, JwtClaim};
     use crate::auth::tokens::TokenPair;
 
+    type HmacSha256 = Hmac<Sha256>;
+
+    fn hash_password(password: &str, salt: &str) -> String {
+        let decoded_salt = general_purpose::STANDARD.decode(salt).unwrap();
+        let mut mac = HmacSha256::new_from_slice(decoded_salt.as_slice()).unwrap();
+        mac.update(password.as_bytes());
+        let result = mac.finalize().into_bytes();
+        general_purpose::STANDARD.encode(result)
+    }
+
     pub async fn add_user(
         logon_req: web::Json<LogonRequest>,
-        db_pool: web::Data<Pool>,
+        state: web::Data<(Pool, EncodingKey)>,
     ) -> Result<HttpResponse, Error> {
         let start = Instant::now();
-        println!("Logon endpoint invoked");
+
+        // println!("Logon endpoint invoked");
         let user_info: LogonRequest = logon_req.into_inner();
-        let pw = user_info.password.clone();
+
         let m1 = start.elapsed();
 
-        let client: Client = db_pool.get().await.map_err(MyError::PoolError)?;
-        let new_user = db::get_user(&client, user_info).await?;
+        let (db_pool, encoding_key) = state.get_ref();
+
+        let client: Client = db_pool.get().await.unwrap();
+
         let m2 = start.elapsed();
 
-        // check password
-        type HmacSha256 = Hmac<Sha256>;
-        let salt = new_user.salt.to_string();
-        // "pSMrnnFNdJtanr5m+D2ZNHOpszE0sYFTAMWXkLfvR7F0euELeyEu1Q1AqwS7o3RTrHyo0UdYtwexDWe7N3gEyA==";
-        let decoded_salt = general_purpose::STANDARD
-            .decode(salt)
-            .expect("Could note decode salt");
-        let hashpassword = new_user.hashpassword.to_string();
-        //"0mhcQnHQjB02bWs9J1u5WFD7e9qZnq32GWfsZjO/XlA=";
-        let password = pw;
+        let request_password = &user_info.password.clone();
+        let new_user = db::get_user(&client, user_info).await?;
 
-        let mut mac = HmacSha256::new_from_slice(decoded_salt.as_slice())
-            .expect("HMAC can take key of any size");
-        mac.update(password.as_bytes());
-        let result = mac.finalize();
-        let code_bytes = result.into_bytes();
-        let encoded: String = general_purpose::STANDARD.encode(code_bytes);
+        let m3 = start.elapsed();
+
+        let hashpassword = new_user.hashpassword.to_string();
+
+        let encoded = hash_password(&request_password, &new_user.salt);
 
         if encoded != hashpassword {
             println!("Incorrect password for user ");
@@ -171,13 +179,6 @@ mod handlers {
         } else {
             println!("Logon success for user");
             let n1 = start.elapsed();
-
-            let encoding_key = EncodingKey::from_rsa_pem(include_bytes!("../privatekey.pkcs8"))
-                .expect("Should have been able to read the file");
-            // let decoding_key = DecodingKey::from_rsa_pem(include_bytes!("../publickey.pem"))
-            //     .expect("Should have been able to read the file");
-
-            let n2 = start.elapsed();
 
             let header = Header::new(Algorithm::RS256);
 
@@ -191,12 +192,14 @@ mod handlers {
             let id_claims = new_user.to_id_claims();
             let access_claims = AccessClaims{ session_id: "session_id".to_string() };
 
+            let n2 = start.elapsed();
+
             let token_pair = TokenPair::create(&encoding_key, &header, common_claims, id_claims, access_claims).unwrap();
             let id_token = token_pair.id_token.raw_token(&encoding_key).unwrap();
             let access_token = token_pair.access_token.raw_token(&encoding_key).unwrap();
 
             let n3 = start.elapsed();
-            // let token = key_pair.sign(claims).expect("Could not sign claims");
+
             let response = TokenResponse {
                 id_token: id_token,
                 access_token: access_token,
@@ -205,9 +208,10 @@ mod handlers {
                 token_type: "whatever".to_string(),
             };
 
-            let m3 = start.elapsed();
-            println!("Elapsed total {} database {} file {} sign {}", m3.as_millis(), (m2-m1).as_millis(),
-                     (n2-n1).as_millis(), (n3-n2).as_millis());
+            let mx = start.elapsed();
+            println!("Elapsed total: {}; db_pool: {}; get_user: {}; hash_password: {}; claims: {}; tokens: {}",
+                     mx.as_millis(), (m2-m1).as_millis(), (m3-m2).as_millis(),
+                     (n1-m3).as_millis(), (n2-n1).as_millis(), (n3-n2).as_millis());
             Ok(HttpResponse::Ok().json(response))
         }
     }
@@ -215,15 +219,19 @@ mod handlers {
 
 use ::config::Config;
 use actix_web::{web, App, HttpServer};
+use deadpool_postgres::{Manager, ManagerConfig, Pool, PoolConfig, RecyclingMethod, Runtime};
 use dotenv::dotenv;
 use handlers::add_user;
 use tokio_postgres::NoTls;
 
 use crate::config::ExampleConfig;
-use crate::handlers::TokenHandler;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+
+    let num_cpus = num_cpus::get_physical();
+    println!("Available CPUs: {}", num_cpus);
+
     dotenv().ok();
     let config_ = Config::builder()
         .add_source(::config::Environment::default())
@@ -232,23 +240,17 @@ async fn main() -> std::io::Result<()> {
 
     let config: ExampleConfig = config_.try_deserialize().unwrap();
 
-    let pool = config.pg.create_pool(None, NoTls).unwrap();
+    let pool = config.pg.builder(NoTls).unwrap().max_size(num_cpus * 20).build().unwrap();
 
-    let handler = TokenHandler::create();
-
-    // pub async fn add_user(
-    //     logon_req: web::Json<crate::models::LogonRequest>,
-    //     db_pool: web::Data<deadpool_postgres::Pool>,
-    // ) -> Result<actix_web::HttpResponse, actix_web::Error> {
-    //     handler.
-    // }
+    let encoding_key = jsonwebtoken::EncodingKey::from_rsa_pem(include_bytes!("../privatekey.pkcs8"))
+        .expect("Should have been able to read the file");
 
     let server = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(pool.clone()))
+            .app_data(web::Data::new((pool.clone(), encoding_key.clone())))
             .service(web::resource("/token").route(web::post().to(add_user )))
     })
-        // .workers(50)
+        .workers(num_cpus*40)
         .bind(config.server_addr.clone())?
         .run();
     println!("Server running at http://{}/", config.server_addr);
