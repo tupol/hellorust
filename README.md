@@ -42,7 +42,16 @@ cd akka-http
 curl http://localhost:8780/token -X POST -d '{"username":"NPA","password":"usr001.."}' -H 'Content-Type: application/json'
 ```
 
+
+```bash
+curl http://localhost:8074/token -X POST -d '{"username":"NPA","password":"usr001.."}' -H 'Content-Type: application/json'
+```
+
 Load test
 ```bash
 wrk -s post-token.lua -d60 -t50 -c50 http://localhost:8780/token
+```
+
+```bash
+wrk -s post-token.lua -d60 -t50 -c50 http://localhost:8074/token
 ```

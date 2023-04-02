@@ -8,11 +8,11 @@ scalaVersion := "2.13.1"
 
 ThisBuild / useCoursier := false
 
-val jreDockerBaseImage = "xlinqreg.azurecr.io/base/azul/zulu-openjdk-alpine:17.0.3"
+val jreDockerBaseImage = "azul/zulu-openjdk-alpine:17.0.3"
 
 lazy val basicSettings = Seq(
   organization := "com.example",
-  name := "simple-auth",
+  name         := "simple-auth",
   javacOptions ++= Seq("-source", "17", "-target", "17", "-Xlint"),
   scalaVersion := "2.13.1",
   scalacOptions ++= Seq(
@@ -24,8 +24,8 @@ lazy val basicSettings = Seq(
   )
 )
 def assemblySettings(enabled: Boolean) = Seq(
-  packageBin / assembleArtifact := enabled,
-  assemblyPackageScala / assembleArtifact := enabled,
+  packageBin / assembleArtifact                := enabled,
+  assemblyPackageScala / assembleArtifact      := enabled,
   assemblyPackageDependency / assembleArtifact := enabled
 )
 
@@ -41,21 +41,20 @@ lazy val jwtVersion        = "9.2.0"
 lazy val bCastleVersion    = "1.70"
 
 lazy val akkaLibraryDependencies: Seq[ModuleID] = Seq(
-  "com.typesafe.akka"    %% "akka-stream"       % akkaVersion,
-  "com.typesafe.akka"    %% "akka-http"         % akkaHttpVersion,
-  "commons-codec"        % "commons-codec"      % commCodecVersion,
-  "ch.qos.logback"       % "logback-classic"    % logbackVersion,
-  "org.postgresql"       % "postgresql"         % postgresVersion,
-  "com.zaxxer"           % "HikariCP"           % hikariVersion,
-  "de.heikoseeberger"    %% "akka-http-json4s"  % akkaJson4sVersion,
-  "org.json4s"           %% "json4s-native"     % json4sVersion,
-  "org.json4s"           %% "json4s-ext"        % json4sVersion,
-  "com.github.jwt-scala" %% "jwt-core"          % jwtVersion,
-  "com.github.jwt-scala" %% "jwt-json4s-native" % jwtVersion,
-  "org.bouncycastle"     % "bcpkix-jdk15on"     % bCastleVersion,
-
-  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
-  "org.scalatest"     %% "scalatest" % "3.1.0" % Test
+  "com.typesafe.akka"    %% "akka-stream"              % akkaVersion,
+  "com.typesafe.akka"    %% "akka-http"                % akkaHttpVersion,
+  "commons-codec"         % "commons-codec"            % commCodecVersion,
+  "ch.qos.logback"        % "logback-classic"          % logbackVersion,
+  "org.postgresql"        % "postgresql"               % postgresVersion,
+  "com.zaxxer"            % "HikariCP"                 % hikariVersion,
+  "de.heikoseeberger"    %% "akka-http-json4s"         % akkaJson4sVersion,
+  "org.json4s"           %% "json4s-native"            % json4sVersion,
+  "org.json4s"           %% "json4s-ext"               % json4sVersion,
+  "com.github.jwt-scala" %% "jwt-core"                 % jwtVersion,
+  "com.github.jwt-scala" %% "jwt-json4s-native"        % jwtVersion,
+  "org.bouncycastle"      % "bcpkix-jdk15on"           % bCastleVersion,
+  "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion % Test,
+  "org.scalatest"        %% "scalatest"                % "3.1.0"     % Test
 )
 
 lazy val server = (project in file("."))
@@ -66,7 +65,7 @@ lazy val server = (project in file("."))
     name := "akka-http-simple-auth",
     libraryDependencies ++= akkaLibraryDependencies,
     Docker / packageName := "example.com/akka-http-simple-auth",
-    dockerBaseImage := jreDockerBaseImage,
+    dockerBaseImage      := jreDockerBaseImage,
     dockerCommands ++= Seq(
       Cmd("USER", "root"),
       ExecCmd("RUN", "apk", "add", "--no-cache", "bash"),
